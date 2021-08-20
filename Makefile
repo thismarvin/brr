@@ -1,8 +1,19 @@
+EXC=brr
+PERMISSIONS=--allow-read
+
 $(VERBOSE).SILENT:
 
-.PHONY: dev
-dev:
-	deno run --allow-read mod.ts $(ARGS)
+all: clean release
+
+bin:
+	mkdir $@
+
+bin/$(EXC): mod.ts | bin
+	deno compile --output $@ $(PERMISSIONS) $<
+
+.PHONY: release
+release: bin/$(EXC)
+	@echo Done
 
 .PHONY: test
 test:
@@ -11,3 +22,8 @@ test:
 .PHONY: format
 format:
 	deno fmt
+
+.PHONY: clean
+clean:
+	if [ -d "./bin" ]; then rm -rf bin; fi
+	@echo Done
