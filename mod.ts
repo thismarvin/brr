@@ -113,59 +113,61 @@ class SeparatorToken extends Token {
   }
 }
 
-let variables: Map<string, Value> = new Map();
+// TODO(#2): Rethink how we think of builtin functions.
+const regexKeyword =
+  /^((?:let)|(?:print)|(?:println)|(?:eq)|(?:add)|(?:sub)|(?:mul)|(?:div))$/;
+const regexIntLiteral = /^(\d+)$/;
+const regexBoolLiteral = /^((?:true)|(?:false))$/;
+const regexIdentifier = /^(_?[A-Za-z]+[\w]*)$/;
+const regexSeparator = /^(;)$/;
 
-function analyze(input: string): Token[] {
-  let tokens: Token[] = [];
+const Lexer = {
+  analyze(input: string): Token[] {
+    let tokens: Token[] = [];
 
-  let lines = input.split(/\n/).filter((line) => !line.trim().startsWith("//"))
-    .reduce((p, c) => `${p} ${c.trim()}`);
-  let lexmemes = lines.split(/\s+/);
+    // TODO(#1): Implement better support for comments.
+    let lines = input
+      .split(/\n/)
+      .filter((line) => !line.trim().startsWith("//"))
+      .reduce((p, c) => `${p} ${c.trim()}`);
 
-  const keywordRegex =
-    /^((?:let)|(?:print)|(?:println)|(?:eq)|(?:add)|(?:sub)|(?:mul)|(?:div))$/;
-  const identifierRegex = /^(_?[A-Za-z]+[\w]*)$/;
-  const intLiteralRegex = /^(\d+)$/;
-  const boolLiteralRegex = /^((?:true)|(?:false))$/;
-  const separatorRegex = /^(;)$/;
+    let lexmemes = lines.split(/\s+/);
 
-  for (let lexeme of lexmemes) {
-    if (keywordRegex.test(lexeme)) {
-      tokens.push(new KeywordToken(new Identifier(lexeme)));
-      continue;
+    for (let lexeme of lexmemes) {
+      if (regexKeyword.test(lexeme)) {
+        tokens.push(new KeywordToken(new Identifier(lexeme)));
+        continue;
+      }
+
+      if (regexIntLiteral.test(lexeme)) {
+        tokens.push(new LiteralToken(new Value(new IntType(parseInt(lexeme)))));
+        continue;
+      }
+      if (regexBoolLiteral.test(lexeme)) {
+        tokens.push(
+          new LiteralToken(
+            new Value(new BoolType(lexeme === "true" ? true : false))
+          )
+        );
+        continue;
+      }
+
+      if (regexIdentifier.test(lexeme)) {
+        tokens.push(new IdentifierToken(new Identifier(lexeme)));
+        continue;
+      }
+
+      if (regexSeparator.test(lexeme)) {
+        tokens.push(new SeparatorToken(lexeme));
+        continue;
+      }
     }
 
-    if (intLiteralRegex.test(lexeme)) {
-      tokens.push(new LiteralToken(new Value(new IntType(parseInt(lexeme)))));
-      continue;
-    }
-    if (boolLiteralRegex.test(lexeme)) {
-      tokens.push(
-        new LiteralToken(
-          new Value(
-            new BoolType(
-              lexeme === "true" ? true : false,
-            ),
-          ),
-        ),
-      );
-      continue;
-    }
+    return tokens;
+  },
+};
 
-    if (identifierRegex.test(lexeme)) {
-      tokens.push(new IdentifierToken(new Identifier(lexeme)));
-      continue;
-    }
-
-    if (separatorRegex.test(lexeme)) {
-      tokens.push(new SeparatorToken(lexeme));
-      continue;
-    }
-  }
-
-  return tokens;
-}
-
+// TODO(#3): Distinguish between Parser and Evaluator?
 function evaluate(tokens: Token[]): string[] {
   let output: string[] = [];
 
@@ -192,7 +194,10 @@ function evaluate(tokens: Token[]): string[] {
   // console.log();
 
   const argsToTokenString = (args: Token[]) => {
-    return args.slice(0).map((i) => i.type).reduce((c, p) => `${p} ${c}`, "")
+    return args
+      .slice(0)
+      .map((i) => i.type)
+      .reduce((c, p) => `${p} ${c}`, "")
       .trim();
   };
 
@@ -314,21 +319,22 @@ function evaluate(tokens: Token[]): string[] {
 
               args.push(
                 new LiteralToken(
-                  new Value(new BoolType(lhAsInt.value === rhAsInt.value)),
-                ),
+                  new Value(new BoolType(lhAsInt.value === rhAsInt.value))
+                )
               );
               break;
             }
             if (
-              value_lh.type.type === "bool" && value_rh.type.type === "bool"
+              value_lh.type.type === "bool" &&
+              value_rh.type.type === "bool"
             ) {
               const lhAsInt = value_lh.type as BoolType;
               const rhAsInt = value_rh.type as BoolType;
 
               args.push(
                 new LiteralToken(
-                  new Value(new BoolType(lhAsInt.value === rhAsInt.value)),
-                ),
+                  new Value(new BoolType(lhAsInt.value === rhAsInt.value))
+                )
               );
               break;
             }
@@ -394,8 +400,8 @@ function evaluate(tokens: Token[]): string[] {
 
               args.push(
                 new LiteralToken(
-                  new Value(new IntType(lhAsInt.value + rhAsInt.value)),
-                ),
+                  new Value(new IntType(lhAsInt.value + rhAsInt.value))
+                )
               );
             }
           }
@@ -459,8 +465,8 @@ function evaluate(tokens: Token[]): string[] {
 
               args.push(
                 new LiteralToken(
-                  new Value(new IntType(lhAsInt.value - rhAsInt.value)),
-                ),
+                  new Value(new IntType(lhAsInt.value - rhAsInt.value))
+                )
               );
             }
           }
@@ -524,8 +530,8 @@ function evaluate(tokens: Token[]): string[] {
 
               args.push(
                 new LiteralToken(
-                  new Value(new IntType(lhAsInt.value * rhAsInt.value)),
-                ),
+                  new Value(new IntType(lhAsInt.value * rhAsInt.value))
+                )
               );
             }
           }
@@ -589,8 +595,8 @@ function evaluate(tokens: Token[]): string[] {
 
               args.push(
                 new LiteralToken(
-                  new Value(new IntType(lhAsInt.value / rhAsInt.value)),
-                ),
+                  new Value(new IntType(lhAsInt.value / rhAsInt.value))
+                )
               );
             }
           }
@@ -641,11 +647,15 @@ function evaluate(tokens: Token[]): string[] {
   return output;
 }
 
+let variables: Map<string, Value> = new Map();
+
 if (Deno.args.length > 0) {
   const path = Deno.args[0];
 
-  Deno.readTextFile(path).then((contents) => {
-    const tokens = analyze(contents);
-    evaluate(tokens);
-  }).catch((_) => console.error(`Could not find file "${path}"`));
+  Deno.readTextFile(path)
+    .then((contents) => {
+      const tokens = Lexer.analyze(contents);
+      evaluate(tokens);
+    })
+    .catch((_) => console.error(`Could not find file "${path}"`));
 }
